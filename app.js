@@ -8,13 +8,40 @@ const port = process.env.PORT || 3000;
 const { createHandler } = require("graphql-http/lib/use/express");
 const schema = require('./schema/schema')
 
+//ruru server
+const { ruruHTML } = require("ruru/server")
+
+//bodyparser
+const bodyparser=require('body-parser')
+
 //database
 const sequelize = require('./config/db')
+const UserModel = require('./models/User');
+const BookModel = require('./models/Book');
+
+//Association
+UserModel.hasMany(BookModel)
+
+//middleware
+const authenticate = require('./middleware/authenticate')
+
+app.use(bodyparser.json())
+app.use(authenticate)
 
 app.all(
   "/graphql",
-  createHandler({schema}
-))
+  createHandler({
+    schema,
+    context:(req)=>({
+        user:req.raw.user,
+        token:req.raw.token,
+    })})
+)
+
+app.get("/", (_req, res) => {
+  res.type("html")
+  res.end(ruruHTML({ endpoint: "/graphql" }))
+})
 
 app.listen(port ,async ()=>{
     try {

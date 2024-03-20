@@ -15,17 +15,19 @@ const Book = sequelize.define('book',{
         type: Sequelize.STRING,
         allowNull: true,
     },
-    addedBy:{
-        type: Sequelize.INTEGER,
-        allowNull: false
+    isAvailable:{
+        type: Sequelize.BOOLEAN,
+        defaultValue: true
     },
     owner:{
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: true,
+        defaultValue: null
     },
-    availableForBorrow:{
-        type: Sequelize.BOOLEAN,
-        allowNull: true
+    ownerType:{
+        type: Sequelize.ENUM,
+        values: ['owned','borrowed','free'],
+        defaultValue: 'free'
     }
 })
 
