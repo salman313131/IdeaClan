@@ -2,7 +2,7 @@ const { GraphQLObjectType, GraphQLID, GraphQLString, GraphQLSchema,
     GraphQLList, GraphQLBoolean, GraphQLNonNull, GraphQLUnionType, GraphQLEnumType, GraphQLInt } = require('graphql')
 const UserModel = require('../models/User')
 const BookModel = require('../models/Book')
-const bcrypt = require('bcrypt'); 
+const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken');
 const { addToBlacklist } = require('../middleware/blacklist');
 
@@ -135,13 +135,45 @@ const Mutation = new GraphQLObjectType({
             },
             resolve: async (parent,args)=>{
                 try {
-                    const saltRounds = 10;
-                    const hashPassword = await bcrypt.hash(args.password,saltRounds);
+                    const ifUser = await UserModel.findOne({where:{email:args.email}})
+                    if(ifUser){
+                        throw new Error("Admin already exist")
+                    }
+                    const password = args.password;
+                    const hashPassword = await bcrypt.hash(password,10);
                     const user = await UserModel.create({
                         name:args.name,
                         email:args.email,
                         password:hashPassword,
                         isAdmin:false
+                    })
+                    return user
+                } catch (error) {
+                    console.log(error);
+                    throw new Error("Falied to create user: ", error.message);
+                }
+            }
+        },
+        addAdmin:{
+            type: User,
+            args: {
+                name:{type:GraphQLNonNull(GraphQLString)},
+                email:{type:GraphQLNonNull(GraphQLString)},
+                password:{type:GraphQLNonNull(GraphQLString)},
+            },
+            resolve: async (parent,args)=>{
+                try {
+                    const ifUser = await UserModel.findOne({where:{email:args.email}})
+                    if(ifUser){
+                        throw new Error("Admin already exist")
+                    }
+                    const password = args.password;
+                    const hashPassword = await bcrypt.hash(password,10)
+                    const user = await UserModel.create({
+                        name:args.name,
+                        email:args.email,
+                        password:hashPassword,
+                        isAdmin:true
                     })
                     return user
                 } catch (error) {
@@ -158,11 +190,14 @@ const Mutation = new GraphQLObjectType({
             },
             resolve:async(parent,args)=>{
                 try {
-                    const user = await UserModel.findOne({email:args.email});
+                    const user = await UserModel.findOne({where:{email:args.email}});
+                    console.log(user.password)
                     if(!user){
                         throw new Error("User not found");
                     }
-                    const passwordMatch = await bcrypt.compare(args.password,user.password);
+                    const password = args.password;
+                    const passwordMatch = await bcrypt.compare(password,user.password)
+                    console.log(passwordMatch)
                     if(!passwordMatch){
                         throw new Error("Password Incorrect")
                     }
@@ -217,11 +252,14 @@ const Mutation = new GraphQLObjectType({
                     if(!user.isAdmin){
                         throw new Error("Only admin can add delete Books")
                     }
-                    const book = await BookModel.destroy({id:args.id})
+                    const book = await BookModel.destroy({where:{id:args.id}})
+                    if(!book){
+                        throw new Error("Book not present")
+                    }
                     return book                    
                 } catch (error) {
                     console.log(error)
-                    throw new Error("Falied to add book: ", error.message);
+                    throw new Error("Falied to delete book: ", error.message);
                 }
             }
         },
@@ -240,9 +278,9 @@ const Mutation = new GraphQLObjectType({
                     if(fetchBook.userId){
                         throw new Error(`Book was borrowed by user with id:${fetchBook.userId}`)
                     }
-                    const book = await BookModel.update({userId:user.id,isAvailable:false,ownerType:'borrowed'}
+                    const book = await BookModel.update({userId:user.userId,isAvailable:false,ownerType:'borrowed'}
                                                         , {where:{id:args.id}})
-                    return book                    
+                    return BookModel.findByPk(args.id)                    
                 } catch (error) {
                     console.log(error)
                     throw new Error("Falied to add book: ", error.message);
@@ -266,7 +304,7 @@ const Mutation = new GraphQLObjectType({
                     }
                     const book = await BookModel.update({userId:user.id,isAvailable:false,ownerType:'owned'},
                                                         {where:{id:args.id}})
-                    return book                    
+                    return BookModel.findByPk(args.id)                    
                 } catch (error) {
                     console.log(error)
                     throw new Error("Falied to add book: ", error.message);

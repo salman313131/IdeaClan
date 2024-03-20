@@ -19,11 +19,6 @@ const Book = sequelize.define('book',{
         type: Sequelize.BOOLEAN,
         defaultValue: true
     },
-    owner:{
-        type: Sequelize.INTEGER,
-        allowNull: true,
-        defaultValue: null
-    },
     ownerType:{
         type: Sequelize.ENUM,
         values: ['owned','borrowed','free'],
